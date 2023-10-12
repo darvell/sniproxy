@@ -321,7 +321,9 @@ func (p *SNIProxy) dial(ctx *SNIContext) (conn net.Conn, err error) {
 			}
 		}
 
-		return p.proxyDialer.Dial("tcp", ctx.RemoteAddr)
+		if p.proxyDialer != nil {
+			return p.proxyDialer.Dial("tcp", ctx.RemoteAddr)
+		}
 	}
 
 	return p.dialer.Dial("tcp", ctx.RemoteAddr)
@@ -330,6 +332,11 @@ func (p *SNIProxy) dial(ctx *SNIContext) (conn net.Conn, err error) {
 // shouldForward checks if the connection should be forwarded to the next proxy.
 func (p *SNIProxy) shouldForward(ctx *SNIContext) (ok bool) {
 	if p.proxyDialer == nil {
+		// Check if we have anything in the proxy rules.
+		if len(p.forwardRules) != 0 {
+			// forward all connections if there are no rules.
+			return true
+		}
 		return false
 	}
 
