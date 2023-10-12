@@ -77,6 +77,10 @@ type Options struct {
 	// for a hard-coded period of 3 minutes.
 	DropRules []string `long:"drop-rule" description:"Wildcard that defines connections to which domains should be dropped (i.e. delayed for a hard-coded period of 3 minutes. Can be specified multiple times."`
 
+	// ForwardMap is a map that allows to define forwarding rules for domains.
+	// Has higher priority than ForwardRules.
+	ForwardMap map[string]string `long:"forward-map" description:"Allows to define forwarding rules for domains. Has higher priority than forward-rule. Example: example.com:socks5://blabla@blabla.com"`
+
 	// Log settings
 	// --
 

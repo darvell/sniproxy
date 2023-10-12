@@ -70,6 +70,8 @@ type SNIProxy struct {
 
 	limiter        *rate.Limiter
 	bandwidthRules map[string]float64
+	forwardMap     map[string]string
+	proxyMap       map[string]proxy.Dialer
 }
 
 // type check
@@ -104,6 +106,30 @@ func New(cfg *Config) (d *SNIProxy, err error) {
 		}
 	}
 
+	// Build out our proxy map. Turn each value in our forward map into a proxy.Dialer
+	// and store it in our proxyMap.
+	proxyMap := make(map[string]proxy.Dialer)
+	for k, v := range cfg.ForwardMap {
+		var u *url.URL
+		u, err = url.Parse(v)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"sniproxy: failed to parse forward-map %s: %w",
+				v,
+				err,
+			)
+		}
+
+		proxyMap[k], err = proxy.FromURL(u, dialer)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"sniproxy: failed to init forward-map %s: %w",
+				v,
+				err,
+			)
+		}
+	}
+
 	var limiter *rate.Limiter
 
 	if cfg.BandwidthRate > 0 {
@@ -122,6 +148,8 @@ func New(cfg *Config) (d *SNIProxy, err error) {
 		dropRules:      cfg.DropRules,
 		limiter:        limiter,
 		bandwidthRules: cfg.BandwidthRules,
+		forwardMap:     cfg.ForwardMap,
+		proxyMap:       proxyMap,
 	}, nil
 }
 
@@ -284,6 +312,15 @@ func (p *SNIProxy) handleConnection(clientConn net.Conn, plainHTTP bool) (err er
 // TODO(ameshkov): consider using DNSUpstream to resolve the specified hostname.
 func (p *SNIProxy) dial(ctx *SNIContext) (conn net.Conn, err error) {
 	if p.shouldForward(ctx) {
+		// Check if proxy map has a proxy.Dialer for this host. We need to match wildcards here so, it's going to be slow.
+		// We have to iterate through all keys :(
+		for k, v := range p.proxyMap {
+			if wildcard.MatchSimple(k, ctx.RemoteHost) {
+				log.Debug("sniproxy: [%d] using proxy %s for %s", ctx.ID, v, ctx.RemoteHost)
+				return p.proxyMap[k].Dial("tcp", ctx.RemoteAddr)
+			}
+		}
+
 		return p.proxyDialer.Dial("tcp", ctx.RemoteAddr)
 	}
 

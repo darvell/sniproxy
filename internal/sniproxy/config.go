@@ -40,4 +40,8 @@ type Config struct {
 	// domains that match the wildcards.  Has higher priority than
 	// BandwidthRate.
 	BandwidthRules map[string]float64
+
+	// Forward Map is a map that allows to define forwarding rules for domains.
+	// Has higher priority than ForwardRules.
+	ForwardMap map[string]string
 }
