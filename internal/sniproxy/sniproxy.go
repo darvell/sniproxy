@@ -316,7 +316,7 @@ func (p *SNIProxy) dial(ctx *SNIContext) (conn net.Conn, err error) {
 		// We have to iterate through all keys :(
 		for k, v := range p.proxyMap {
 			if wildcard.MatchSimple(k, ctx.RemoteHost) {
-				log.Debug("sniproxy: [%d] using proxy %s for %s", ctx.ID, v, ctx.RemoteHost)
+				log.Info("sniproxy: [%d] using proxy %s for %s", ctx.ID, v, ctx.RemoteHost)
 				return p.proxyMap[k].Dial("tcp", ctx.RemoteAddr)
 			}
 		}
@@ -331,12 +331,13 @@ func (p *SNIProxy) dial(ctx *SNIContext) (conn net.Conn, err error) {
 
 // shouldForward checks if the connection should be forwarded to the next proxy.
 func (p *SNIProxy) shouldForward(ctx *SNIContext) (ok bool) {
+	if len(p.proxyMap) != 0 {
+		// forward all connections if there are no rules.
+		return true
+	}
+
 	if p.proxyDialer == nil {
 		// Check if we have anything in the proxy rules.
-		if len(p.forwardRules) != 0 {
-			// forward all connections if there are no rules.
-			return true
-		}
 		return false
 	}
 
