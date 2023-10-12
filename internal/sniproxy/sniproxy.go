@@ -109,6 +109,8 @@ func New(cfg *Config) (d *SNIProxy, err error) {
 	// Build out our proxy map. Turn each value in our forward map into a proxy.Dialer
 	// and store it in our proxyMap.
 	proxyMap := make(map[string]proxy.Dialer)
+	log.Info("sniproxy: building proxy map")
+
 	for k, v := range cfg.ForwardMap {
 		var u *url.URL
 		u, err = url.Parse(v)
@@ -120,6 +122,7 @@ func New(cfg *Config) (d *SNIProxy, err error) {
 			)
 		}
 
+		log.Info("sniproxy: adding proxy %s for %s", u, k)
 		proxyMap[k], err = proxy.FromURL(u, dialer)
 		if err != nil {
 			return nil, fmt.Errorf(
@@ -315,6 +318,7 @@ func (p *SNIProxy) dial(ctx *SNIContext) (conn net.Conn, err error) {
 		// Check if proxy map has a proxy.Dialer for this host. We need to match wildcards here so, it's going to be slow.
 		// We have to iterate through all keys :(
 		for k, v := range p.proxyMap {
+			log.Info("sniproxy: checking %s against %s", ctx.RemoteHost, k)
 			if wildcard.MatchSimple(k, ctx.RemoteHost) {
 				log.Info("sniproxy: [%d] using proxy %s for %s", ctx.ID, v, ctx.RemoteHost)
 				return p.proxyMap[k].Dial("tcp", ctx.RemoteAddr)

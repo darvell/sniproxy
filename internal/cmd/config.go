@@ -100,6 +100,7 @@ func toSNIProxyConfig(options *Options) (cfg *sniproxy.Config) {
 		BlockRules:    options.BlockRules,
 		DropRules:     options.DropRules,
 		BandwidthRate: options.BandwidthRate,
+		ForwardMap:    options.ForwardMap,
 	}
 
 	return cfg
